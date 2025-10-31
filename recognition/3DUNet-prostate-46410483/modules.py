@@ -4,33 +4,33 @@ import torch.nn as nn
 class ThreeDUNet(nn.Module):
     """
     """
-    def __init__(self, in_channels=6, out_channels=6):
+    def __init__(self, in_channels=1, out_channels=6):
         super().__init__()
 
-        self.enc1 = self._conv_block(in_channels, 64)
-        self.enc2 = self._conv_block(64, 128)
-        self.enc3 = self._conv_block(128, 256)
+        self.enc1 = self._conv_block(in_channels, 32)
+        self.enc2 = self._conv_block(32, 64)
+        self.enc3 = self._conv_block(64, 128)
 
-        self.enc4 = self._conv_block(256, 512)
+        self.enc4 = self._conv_block(128, 256)
 
         # Decoder (upsampling)
-        self.dec4 = self._conv_block(512 + 256, 256)
-        self.dec3 = self._conv_block(256 + 128, 128)
-        self.dec2 = self._conv_block(128 + 64, 64)
-        self.dec1 = nn.Conv3d(64, out_channels, 1)
+        self.dec4 = self._conv_block(256 + 128, 128)
+        self.dec3 = self._conv_block(128 + 64, 64)
+        self.dec2 = self._conv_block(64 + 32, 32)
+        self.dec1 = nn.Conv3d(32, out_channels, 1)
 
         self.pool = nn.MaxPool3d(2, stride=2)
-        self.up1 = nn.ConvTranspose3d(512, 256, 2, 2)
-        self.up2 = nn.ConvTranspose3d(256, 128, 2, 2)
-        self.up3 = nn.ConvTranspose3d(128, 64, 2, 2)
+        self.up1 = nn.ConvTranspose3d(256, 256, 2, 2)
+        self.up2 = nn.ConvTranspose3d(128, 128, 2, 2)
+        self.up3 = nn.ConvTranspose3d(64, 64, 2, 2)
 
     def _conv_block(self, in_ch, out_ch):
         """Conv block with batch normalization and LeakyReLU: Conv -> BN -> LeakyReLU -> Conv -> BN -> LeakyReLU"""
         return nn.Sequential(
-            nn.Conv3d(in_ch, out_ch//2, 3, padding=1),
-            nn.BatchNorm3d(out_ch),
+            nn.Conv3d(in_ch, int(out_ch//2), 3, padding=1),
+            nn.BatchNorm3d(int(out_ch//2)),
             nn.LeakyReLU(negative_slope=0.2, inplace=True),
-            nn.Conv3d(out_ch//2, out_ch, 3, padding=1),
+            nn.Conv3d(int(out_ch//2), out_ch, 3, padding=1),
             nn.BatchNorm3d(out_ch),
             nn.LeakyReLU(negative_slope=0.2, inplace=True),
         )
