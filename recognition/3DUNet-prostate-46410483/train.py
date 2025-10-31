@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from plotting import epoch_plot
 
 class DiceCELoss(nn.Module):
     """
@@ -40,7 +41,7 @@ def train(device, model, train_loader, epochs=3, lr=0.001, plot_epoch_results=Fa
     
     losses = []
 
-    print("Starting training 3D UNet")
+    print(f"Starting training 3D UNet")
     for epoch in range(epochs):
         model.train()
         epoch_loss = 0
@@ -65,11 +66,38 @@ def train(device, model, train_loader, epochs=3, lr=0.001, plot_epoch_results=Fa
 
             count += 1
             if (count % 50 == 0):
-                print(f"{count}/{len(train_loader)} Completed")
+                print(f"       Epoch: {epoch}, Steps Completed: {count}/{len(train_loader)}")
+
+        if plot_epoch_results:
+            model.eval()
+            epoch_plot(images, masks, outputs)
+            model.train()        
+
 
         avg_loss = epoch_loss / len(train_loader)
         losses.append(avg_loss)
-        print(f"📈 Epoch {epoch+1}/{epochs} Complete: Avg Loss = {avg_loss:.4f}")
+        print(f"    📍 Epoch {epoch+1}/{epochs} Complete: Avg Loss = {avg_loss:.4f}")
 
-    print(" Training complete with 3D UNet")
+    print(f"Training complete with 3D UNet\n")
     return losses
+
+def test(device, model, test_loader):
+    model.eval()
+    criterion = DiceCELoss(1e-6)
+    print(f"Starting Testing 3D UNet")
+    with torch.no_grad():
+        total_loss = 0
+        for images, masks in test_loader:
+            images = images.to(device)
+            masks = masks.to(device)
+
+            if masks.dim() == 5 and masks.size(0) == 1:
+                masks = masks.squeeze(0)
+
+            outputs = model(images)
+            loss = criterion(outputs, masks)
+
+            total_loss += loss.item()
+            
+    average_loss = total_loss / len(test_loader)
+    print(f"Average loss while testing: {average_loss:.4f}")
