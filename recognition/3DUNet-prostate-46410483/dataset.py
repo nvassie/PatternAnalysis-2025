@@ -1,6 +1,28 @@
+from typing import List
 import numpy as np
 import nibabel as nib
 from tqdm import tqdm
+import os
+from torch.utils.data import DataLoader, Dataset
+import torchvision.transforms as transforms
+import torch
+import matplotlib.pyplot as plt
+
+def combine_labels_images(images_path: str, labels_path: str):
+    images = os.listdir(images_path)
+    labels = os.listdir(labels_path)
+
+    combined = []
+
+    for i in range(0, len(images)):
+        image = os.path.join(image_path, images[i])
+        label = os.path.join(label_path, labels[i])
+        pair = (image, label)
+        combined.append(pair)
+
+    return combined
+
+
 
 def to_channels (arr: np.ndarray, dtype = np.uint8) -> np.ndarray :
     channels = np.unique(arr)
@@ -11,74 +33,30 @@ def to_channels (arr: np.ndarray, dtype = np.uint8) -> np.ndarray :
 
     return res
 
-def load_data_3D (imageNames, normImage = False, categorical = False, dtype = np.float32,
-    getAffines = False , orient = False , early_stop = False) :
-    '''
-    Load medical image data from names , cases list provided into a list for each .
+class Prostate3DDataset(Dataset):
+    """Dataset for color images and binary masks."""
 
-    This function pre - allocates 5 D arrays for conv3d to avoid excessive memory ↘
-    usage .
+    def __init__(self, image_path=r"N:\code\prostate_data\data\semantic_MRs_anon", label_path=r"N:\code\prostate_data\data\semantic_labels_anon"):
+        self.dataset = combine_labels_images(image_path, label_path)
 
-    normImage : bool ( normalise the image 0.0 -1.0)
-    orient : Apply orientation and resample image ? Good for images with large slice ↘
-    thickness or anisotropic resolution
-    dtype : Type of the data . If dtype = np . uint8 , it is assumed that the data is ↘
-    labels
-    early_stop : Stop loading pre - maturely ? Leaves arrays mostly empty , for quick ↘
-    loading and testing scripts .
-    '''
-    affines = []
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, index):
+        # Get image and mask
+        image, mask = self.dataset[index]
+        image = nib.load(image).get_fdata()
+        mask = nib.load(mask).get_fdata()
 
-    # ~ interp = ' continuous '
-    interp = 'linear'
-    if dtype == np.uint8 : # assume labels
-        interp = 'nearest'
+        mask = to_channels(mask)
 
-    # get fixed size
-    num = len (imageNames)
-    niftiImage = nib.load(imageNames[0])
-    if orient:
-        niftiImage = im.applyOrientation(niftiImage, interpolation = interp, scale=1)
-        # ~ testResultName = " oriented . nii . gz "
-        # ~ niftiImage . to_filename ( testResultName )
-    first_case = niftiImage.get_fdata(caching = 'unchanged')
-    if len(first_case.shape) == 4:
-        first_case = first_case[:,:,:,0] # sometimes extra dims , remove
-    if categorical:
-        first_case = to_channels(first_case, dtype = dtype)
-        rows, cols, depth, channels = first_case.shape
-        images = np.zeros((num, rows, cols, depth, channels), dtype = dtype)
-    else:
-        rows, cols, depth = first_case.shape
-        images = np.zeros((num, rows, cols, depth), dtype = dtype)
+        # Convert to tensor
+        image = torch.from_numpy(image)
+        mask = torch.from_numpy(mask)
+        image = image.squeeze(0) 
+        mask = mask.squeeze(0)
 
-    for i, inName in enumerate(tqdm(imageNames)):
-        niftiImage = nib.load(inName)
-        if orient:
-            niftiImage = im.applyOrientation(niftiImage, interpolation = interp, scale =1)
-        inImage = niftiImage.get_fdata(caching = 'unchanged') # read disk only
-        affine = niftiImage.affine
-        if len(inImage.shape) == 4:
-            inImage = inImage[:,:,:,0] # sometimes extra dims in HipMRI_study data
-        inImage = inImage[:,:,:depth] # clip slices
-        inImage = inImage.astype(dtype)
-        if normImage:
-            # ~ inImage = inImage / np . linalg . norm ( inImage )
-            # ~ inImage = 255. * inImage / inImage . max ()
-            inImage = (inImage-inImage.mean()) / inImage.std()
-        if categorical:
-            inImage = utils.to_channels(inImage, dtype = dtype)
-            # ~ images [i ,: ,: ,: ,:] = inImage
-            images[i,:inImage.shape[0],:inImage.shape[1],:inImage.shape[2],:inImage.shape[3]] = inImage # with pad
-        else:
-            # ~ images [i ,: ,: ,:] = inImage
-            images[i,:inImage.shape[0],:inImage.shape[1],:inImage.shape[2]] = inImage # with pad
+        return image, mask
 
-        affines.append(affine)
-        if i > 20 and early_stop:
-            break
-
-    if getAffines:
-        return images , affines
-    else :
-        return images
+image_path = r"N:\code\prostate_data\data\semantic_MRs_anon"
+label_path = r"N:\code\prostate_data\data\semantic_labels_anon"
