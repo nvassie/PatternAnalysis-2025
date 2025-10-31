@@ -15,8 +15,8 @@ def combine_labels_images(images_path: str, labels_path: str):
     combined = []
 
     for i in range(0, len(images)):
-        image = os.path.join(image_path, images[i])
-        label = os.path.join(label_path, labels[i])
+        image = os.path.join(images_path, images[i])
+        label = os.path.join(labels_path, labels[i])
         pair = (image, label)
         combined.append(pair)
 
@@ -26,11 +26,10 @@ def combine_labels_images(images_path: str, labels_path: str):
 
 def to_channels (arr: np.ndarray, dtype = np.uint8) -> np.ndarray :
     channels = np.unique(arr)
-    res = np.zeros(arr.shape + (len(channels),), dtype = dtype)
-    for c in channels:
-        c = int(c)
-        res[...,c:c+1][arr == c] = 1
-
+    C = len(channels)
+    res = np.zeros((C,) + arr.shape, dtype=dtype)
+    for i, c in enumerate(channels):
+        res[i][arr == c] = 1
     return res
 
 class Prostate3DDataset(Dataset):
@@ -45,18 +44,15 @@ class Prostate3DDataset(Dataset):
     def __getitem__(self, index):
         # Get image and mask
         image, mask = self.dataset[index]
-        image = nib.load(image).get_fdata()
-        mask = nib.load(mask).get_fdata()
+        image = nib.load(image).get_fdata().astype(np.float32)
+        mask = nib.load(mask).get_fdata().astype(np.uint8)
 
-        mask = to_channels(mask)
+        #mask = to_channels(mask)
 
         # Convert to tensor
-        image = torch.from_numpy(image)
+        image = torch.from_numpy(image)[None, None] 
         mask = torch.from_numpy(mask)
         image = image.squeeze(0) 
         mask = mask.squeeze(0)
 
         return image, mask
-
-image_path = r"N:\code\prostate_data\data\semantic_MRs_anon"
-label_path = r"N:\code\prostate_data\data\semantic_labels_anon"
