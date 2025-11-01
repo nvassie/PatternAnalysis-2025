@@ -23,18 +23,18 @@ class DiceCELoss(nn.Module):
 
         one_hot = torch.nn.functional.one_hot(target, num_classes=6)
         one_hot = one_hot.permute(0,4,1,2,3)
-        dice_loss = calc_dice_loss(probability, one_hot, self.smoothing)
+        dice_loss, dice_per_class = calc_dice_loss(probability, one_hot, self.smoothing)
         dice_loss = dice_loss * self.dice_weight
 
-        return ce_loss + dice_loss
+        return (ce_loss + dice_loss), dice_per_class.detach().cpu().numpy()
 
 def calc_dice_loss(probability, one_hot, smoothing):
     dims = (0, 2, 3, 4)
     intersection = torch.sum(probability * one_hot, dims)
     denominator = torch.sum(probability + one_hot, dims)
     dice_per_class = (2 * intersection + smoothing) / (denominator + smoothing)
-    dice_mean = dice_per_class.mean() 
-    return (1 - dice_mean)
+    dice_mean = dice_per_class.mean()
+    return (1 - dice_mean), dice_per_class
 
 def train(device, model, train_loader, epochs=3, lr=0.001, save=False, plot_epoch_results=False):
     model.to(device)
@@ -58,7 +58,7 @@ def train(device, model, train_loader, epochs=3, lr=0.001, save=False, plot_epoc
             optimizer.zero_grad()
             outputs = model(images)
 
-            loss = criterion(outputs, masks)
+            loss, dice_per_class = criterion(outputs, masks)
 
             # Backward pass
             loss.backward()
@@ -72,13 +72,15 @@ def train(device, model, train_loader, epochs=3, lr=0.001, save=False, plot_epoc
 
         if plot_epoch_results:
             model.eval()
-            epoch_plot(images, masks, outputs)
-            model.train()        
+            epoch_plot(images, masks, outputs, dice_per_class)
+            model.train()
 
 
         avg_loss = epoch_loss / len(train_loader)
         losses.append(avg_loss)
         print(f"    📍 Epoch {epoch+1}/{epochs} Complete: Avg Loss = {avg_loss:.4f}")
+        print(f"       Dice Similarity Coefficients:")
+        print(f"       Background: {dice_per_class[0]}, Body: {dice_per_class[1]}, Bone: {dice_per_class[2]}, Bladder: {dice_per_class[3]}, Rectum: {dice_per_class[4]}, Prostate: {dice_per_class[5]}")
 
     print(f"Training complete with 3D UNet\n")
     
@@ -111,7 +113,7 @@ def test(device, model, test_loader, plot=False):
                 masks = masks.squeeze(0)
 
             outputs = model(images)
-            loss = criterion(outputs, masks)
+            loss, dice_per_class = criterion(outputs, masks)
 
             total_loss += loss.item()
             
@@ -123,7 +125,7 @@ def test(device, model, test_loader, plot=False):
             print(f"       Steps Completed: {count}/{len(test_loader)}")
             
     if plot and plot_image != None and plot_mask != None and plot_output != None:
-        epoch_plot(plot_image, plot_mask, plot_output)
+        epoch_plot(plot_image, plot_mask, plot_output, dice_per_class)
 
     average_loss = total_loss / len(test_loader)
     print(f"Average loss while testing: {average_loss:.4f}")
