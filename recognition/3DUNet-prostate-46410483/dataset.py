@@ -5,18 +5,13 @@ import os
 from torch.utils.data import Dataset
 import torch
 
-def combine_labels_images(images_path: str, labels_path: str, size: int):
+def combine_labels_images(images_path: str, labels_path: str, indices: List[int]):
     images = os.listdir(images_path)
     labels = os.listdir(labels_path)
 
     combined = []
 
-    image_size = len(images)
-
-    if size > 0 and size < image_size:
-        image_size = size
-
-    for i in range(0, image_size):
+    for i in indices:
         image = os.path.join(images_path, images[i])
         label = os.path.join(labels_path, labels[i])
         pair = (image, label)
@@ -46,10 +41,9 @@ def pad_image(image):
 class Prostate3DDataset(Dataset):
     """Dataset for color images and binary masks."""
 
-    def __init__(self, image_path=r"N:\code\prostate_data\data\semantic_MRs_anon", label_path=r"N:\code\prostate_data\data\semantic_labels_anon", training=True, size=-1):
-        self.dataset = combine_labels_images(image_path, label_path, size)
+    def __init__(self, image_path=r"N:\code\prostate_data\data\semantic_MRs_anon", label_path=r"N:\code\prostate_data\data\semantic_labels_anon", indices=[]):
+        self.dataset = combine_labels_images(image_path, label_path, indices)
         self.downsample = 0.5
-        self.training = training
 
     def __len__(self):
         return len(self.dataset)
@@ -67,12 +61,11 @@ class Prostate3DDataset(Dataset):
         image = torch.from_numpy(image)[None, None] 
         mask = torch.from_numpy(mask)[None, None].float()
 
-        if self.training:
-            image = torch.nn.functional.interpolate(image, scale_factor=self.downsample, mode='trilinear', align_corners=False)
-            mask = torch.nn.functional.interpolate(mask, scale_factor=self.downsample, mode='trilinear')
+        image = torch.nn.functional.interpolate(image, scale_factor=self.downsample, mode='trilinear', align_corners=False)
+        mask = torch.nn.functional.interpolate(mask, scale_factor=self.downsample, mode='trilinear')
 
-            image = pad_image(image)
-            mask = pad_image(mask)
+        image = pad_image(image)
+        mask = pad_image(mask)
 
         image = image.squeeze(0)
         mask = mask.squeeze(0).long()
