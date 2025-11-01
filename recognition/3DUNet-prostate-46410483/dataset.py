@@ -1,16 +1,21 @@
-from typing import List
+from typing import List, Tuple
 import numpy as np
 import nibabel as nib
 import os
 from torch.utils.data import Dataset
 import torch
 
-def combine_labels_images(images_path: str, labels_path: str, indices: List[int]):
+def combine_labels_images(images_path: str, labels_path: str, indices: List[int]) -> List[Tuple[str, str]]:
+    """
+    Creates a list of tuples of paths to the link images and labels
+    """
+    # Creates lists of the files within the provided paths
     images = os.listdir(images_path)
     labels = os.listdir(labels_path)
 
     combined = []
 
+    # Creates path for each image and label and combines them in a tuple
     for i in indices:
         image = os.path.join(images_path, images[i])
         label = os.path.join(labels_path, labels[i])
@@ -23,18 +28,28 @@ def pad_image(image):
     """
     Pad the inputted image to be divisable by 8 to work with the 3D UNet
     """
+    # Gets shape of provide image
     _, _, depth, height, width = image.shape
+
+    # Depth values
     depth_size = (8 - (depth % 8))
     depth_before = depth_size // 2
     depth_after = depth_size - depth_before
+
+    # Height values
     height_size = (8 - (height % 8))
     height_before = height_size // 2
     height_after = height_size - height_before
+
+    # Width values
     width_size = (8 - (width % 8))
     width_before = width_size // 2
     width_after = width_size - width_before
+
     padding = [width_before, width_after, height_before, height_after, depth_before, depth_after]
+
     image = torch.nn.functional.pad(image, padding)
+
     return image
 
 
@@ -51,6 +66,8 @@ class Prostate3DDataset(Dataset):
     def __getitem__(self, index):
         # Get image and mask
         image, mask = self.dataset[index]
+
+        # Load the nitfi files
         image = nib.load(image).get_fdata().astype(np.float32)
         mask = nib.load(mask).get_fdata().astype(np.uint8)
 
@@ -61,9 +78,11 @@ class Prostate3DDataset(Dataset):
         image = torch.from_numpy(image)[None, None] 
         mask = torch.from_numpy(mask)[None, None].float()
 
+        # Downsample image and mask
         image = torch.nn.functional.interpolate(image, scale_factor=self.downsample, mode='trilinear', align_corners=False)
         mask = torch.nn.functional.interpolate(mask, scale_factor=self.downsample, mode='trilinear')
 
+        # Pad downsampled image and mask to make sure they are compatible with model
         image = pad_image(image)
         mask = pad_image(mask)
 
