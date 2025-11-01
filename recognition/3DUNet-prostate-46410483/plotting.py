@@ -49,3 +49,21 @@ def epoch_plot(images, masks, outputs, dice_values):
 
         plt.tight_layout()
         plt.show()
+
+def loss_plot(epoch_num, train_losses, val_losses):
+    """
+    Plots the average training and validation loss per epoch
+    """
+
+    x_axis = []
+
+    for i in range(epoch_num):
+        x_axis.append(i)
+
+    plt.plot(x_axis, train_losses, color="Red", label="Average Training Loss")
+    plt.plot(x_axis, val_losses, color="Blue", label="Average Validation Loss")
+    plt.xlabel("Number of Epochs")
+    plt.ylabel("Loss")
+    plt.title("Training vs Validation Loss")
+    plt.legend()
+    plt.show()
