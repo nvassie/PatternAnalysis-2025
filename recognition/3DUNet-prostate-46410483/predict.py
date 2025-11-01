@@ -1,33 +1,15 @@
 import random
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
-import torchvision.transforms as transforms
+import os
+from torch.utils.data import DataLoader
 from dataset import Prostate3DDataset
 from modules import ThreeDUNet
-import torchvision.transforms.functional as TF
-from train import train, test
+from train import DiceCELoss
+from plotting import epoch_plot, make_multiclass_overlay_gif, prepare_volumes_any
 
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-
-# Check if CUDA is available
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f'Using device: {device}\n')
-
-image_path = r"N:\code\prostate_data\data\semantic_MRs_anon"
-label_path = r"N:\code\prostate_data\data\semantic_labels_anon"
-#model_path = r"N:\code\PatternAnalysis-2025\recognition\3DUNet-prostate-46410483\models\2025-11-01_0.0636.pth"
-
-def generate_indices_for_datasets(image_path):
+def generate_predict_dataset(image_path, label_path, size):
     """
-    generates random three lists of indices for the training (80%), testing (10%) and 
-    validation (10%) datasets, based on provided dataset size.
-
-    The indices are unique to prevent data leakage.
+    Generates a dataset with the provided size to run with model with
     """
     images = os.listdir(image_path)
     num_of_images = len(images)
@@ -35,29 +17,94 @@ def generate_indices_for_datasets(image_path):
 
     random.shuffle(list_of_indices)
 
-    train_num = int(0.8 * num_of_images)
-    val_num = int(0.1 * num_of_images)
+    dataset_indices = list_of_indices[:size]
+    dataset = Prostate3DDataset(image_path, label_path, dataset_indices)
 
-    train_indices = list_of_indices[:train_num]
-    val_indices = list_of_indices[train_num:train_num + val_num]
-    test_indices = list_of_indices[train_num + val_num:]
+    return dataset
 
-    return train_indices, test_indices, val_indices
+def evaulate(device, model, loader):
+    """
+    Runs the loaded model
+    """
+    model.eval()
+    criterion = DiceCELoss(1e-6)
+    print(f"Starting Evaulating 3D UNet\n")
+    with torch.no_grad():
+        total_loss = 0
+        count = 0
+        plot_image = None
+        plot_mask = None
+        plot_output = None
 
-train_indices, test_indices, val_indices = generate_indices_for_datasets(image_path)
+        for images, masks in loader:
+            images = images.to(device)
+            masks = masks.to(device)
 
-training_dataset = Prostate3DDataset(image_path=image_path, label_path=label_path, indices=train_indices)
-test_dataset = Prostate3DDataset(image_path=image_path, label_path=label_path, indices=test_indices)
+            if masks.dim() == 5 and masks.size(0) == 1:
+                masks = masks.squeeze(0)
+
+            outputs = model(images)
+            loss, dice_per_class = criterion(outputs, masks)
+
+            total_loss += loss.item()
+            
+            if count == len(loader)-1:
+                plot_image = images
+                plot_mask = masks
+                plot_output = outputs
+            count += 1
+            print(f"       Steps Completed: {count}/{len(loader)}")
+
+    epoch_plot(plot_image, plot_mask, plot_output, dice_per_class)
+    vol1, seg1 = prepare_volumes_any(plot_image, plot_output)   # -> (72,136,136) each
+    make_multiclass_overlay_gif(vol1, seg1, out_path="my_volume1.gif", fps=8, alpha=0.2)
+    vol2, seg2 = prepare_volumes_any(plot_image, plot_mask)   # -> (72,136,136) each
+    make_multiclass_overlay_gif(vol2, seg2, out_path="my_volume2.gif", fps=8, alpha=0.2)
+
+    average_loss = total_loss / len(loader)
+    print(f"\nAverage loss while evaulating: {average_loss:.4f}")
+
+def predict():
+    """
+    Loads a model and creates a dataset then evaulates the model
+    and then outputs metrics, plots and gifs
+    """
+    image_path = r"N:\code\prostate_data\data\semantic_MRs_anon"
+    label_path = r"N:\code\prostate_data\data\semantic_labels_anon"
+
+    # Check if CUDA is available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f'Using device: {device}\n')
+
+    #get most recent model path
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    models_dir = os.path.join(current_dir, "models")
+    if not os.path.exists(models_dir):
+        raise FileNotFoundError("The is no models folder in the current directory")
+    
+    models_list = os.listdir(models_dir)
+
+    if len(models_list) == 0:
+        raise FileNotFoundError("The are no models saved")
+    
+    models_list.sort(key=lambda f: os.path.getmtime(os.path.join(models_dir, f)), reverse=True)
+    model_name = models_list[0]
 
 
-train_loader = DataLoader(training_dataset, batch_size=1, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+    print(f"Loading model: {model_name}\n")
+    model_path = os.path.join(models_dir, model_name)
 
-model = ThreeDUNet(in_channels=1, out_channels=6)
-# if model_path:
-#     model.load_state_dict(torch.load(model_path))
-#     model.to(device)
-losses = train(device, model, train_loader, epochs=10, lr=0.001, save=True, plot_epoch_results=False)
-test(device, model, test_loader, plot=True)
+    model = ThreeDUNet(in_channels=1, out_channels=6)
+    model.load_state_dict(torch.load(model_path))
+    model.to(device)
 
-generate_indices_for_datasets(image_path)
+    size = 30
+
+    dataset = generate_predict_dataset(image_path, label_path, size)
+    loader = DataLoader(dataset, batch_size=1, shuffle=False)
+
+    model.eval()
+    evaulate(device, model, loader)
+
+if __name__ == "__main__":
+    predict()
