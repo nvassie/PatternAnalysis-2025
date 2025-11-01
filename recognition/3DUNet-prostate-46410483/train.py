@@ -1,6 +1,8 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from datetime import date
 from plotting import epoch_plot
 
 class DiceCELoss(nn.Module):
@@ -34,7 +36,7 @@ def calc_dice_loss(probability, one_hot, smoothing):
     dice_mean = dice_per_class.mean() 
     return (1 - dice_mean)
 
-def train(device, model, train_loader, epochs=3, lr=0.001, plot_epoch_results=False):
+def train(device, model, train_loader, epochs=3, lr=0.001, save=False, plot_epoch_results=False):
     model.to(device)
     criterion = DiceCELoss(1e-6)
     optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -79,14 +81,28 @@ def train(device, model, train_loader, epochs=3, lr=0.001, plot_epoch_results=Fa
         print(f"    📍 Epoch {epoch+1}/{epochs} Complete: Avg Loss = {avg_loss:.4f}")
 
     print(f"Training complete with 3D UNet\n")
+    
+    if save:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        save_dir = os.path.join(current_dir, "models")
+        os.makedirs(save_dir, exist_ok=True)
+        model_path = os.path.join(save_dir, f"{date.today()}_{avg_loss:.4f}.pth")
+        torch.save(model.state_dict(), model_path)
+        print(f"Saved model to {model_path}\n")
+
     return losses
 
-def test(device, model, test_loader):
+def test(device, model, test_loader, plot=False):
     model.eval()
     criterion = DiceCELoss(1e-6)
     print(f"Starting Testing 3D UNet")
     with torch.no_grad():
         total_loss = 0
+        count = 0
+        plot_image = None
+        plot_mask = None
+        plot_output = None
+
         for images, masks in test_loader:
             images = images.to(device)
             masks = masks.to(device)
@@ -99,5 +115,15 @@ def test(device, model, test_loader):
 
             total_loss += loss.item()
             
+            if count == len(test_loader)-1:
+                plot_image = images
+                plot_mask = masks
+                plot_output = outputs
+            count += 1
+            print(f"       Steps Completed: {count}/{len(test_loader)}")
+            
+    if plot and plot_image != None and plot_mask != None and plot_output != None:
+        epoch_plot(plot_image, plot_mask, plot_output)
+
     average_loss = total_loss / len(test_loader)
     print(f"Average loss while testing: {average_loss:.4f}")
