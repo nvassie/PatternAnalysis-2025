@@ -62,12 +62,66 @@ Additionally, the data has been downsampled by a factor of 0.5 to reduce complex
 - **nibabel** 5.3.2
 - **imageio** 2.37.0
 
+### Hyper Parameters:
+
+All hyper parameters can be found at the top of train.py
+
+| Parameter             | Default                              |
+| --------------------- | ------------------------------------ |
+| Learning rate (LR)    | 0.001                                |
+| Number of epochs (EPOCHS) | 15 |
+| Number of in channels (IN_CHANNELS) | 1 |
+| Number of out channels (OUT_CHANNELS) | 6 |
+| Cross entropy weight (CE_WEIGHT) | 0.5 |
+| Dice loss weight (DICE_WEIGHT) | 0.5 |
+| Smoothing (SMOOTHING) | 1e-6 |
+| Number of Classes | 6 |
+
 ### Training:
+
+#### Training Components:
+
+| Component | Description |
+| --------- | ----------- |
+| Loss funtion | Weight dice and cross entropy loss |
+| Optimizer | Adam (lr = 0.001) |
+
 
 To create and train a model, running the following line in the 3DUNet-prostate-46410483 directory
 
 ```bash
 python train.py
+```
+
+#### Output:
+
+Below is a sample of the output that will provided while training:
+
+```bash
+          Epoch: 3, Steps Completed: 50/168
+          Epoch: 3, Steps Completed: 100/168
+          Epoch: 3, Steps Completed: 150/168
+
+    📍 Epoch 4/15 Complete: Avg Training Loss = 0.1615, Avg Validation Loss = 0.1655
+          Dice Similarity Coefficients:
+             Multiclass: 0.8035
+             Background: 0.9956
+             Body: 0.9691
+             Bone: 0.8054
+             Bladder: 0.7735
+             Rectum: 0.5492
+             Prostate: 0.7284
+```
+
+Below is a sample of the output that will provided when training is finished:
+
+```bash
+Training complete with 3D UNet
+
+Final average training loss: 0.0633
+Final average training loss: 0.0754
+Final multiclass dice similartiy coefficient: 0.9038
+
 ```
 
 This will create, train, validate and test a model and save the resulting model into the /model directory
@@ -80,7 +134,25 @@ To use a previously created model to create visualations of the preformance of t
 python predict.py
 ```
 
-## Results
+#### Output:
+
+Below is a sample of the output that will provided:
+
+```bash
+Starting Testing 3D UNet
+
+       Steps Completed: 1/22
+       Steps Completed: 2/22
+       Steps Completed: 3/22
+       Steps Completed: 4/22
+       Steps Completed: 5/22
+       Steps Completed: 6/22
+       ...
+
+Average loss while testing: 0.0744 
+```
+
+## Example Results
 
 Below are two gifs of the same image with masks overlayed on them, the left gif uses the masks produced by the model and the right gif uses the ground truth masks provided by the dataset.
 
@@ -94,4 +166,12 @@ The following images are examples of what is provided at the end of training a m
 ![dice](readme_images/example_dice_plot.png)
 ![multiclass](readme_images/example_multiclass_plot.png)
 
+## Results
+
+To consistantly get above 0.7 dice similarity coefficients for all classes 15 epochs is recommended by 10 epochs will give an above 0.7 dice similarity coefficients for all classes most of the time.
+
 ## References
+
+[1] Ö. Çiçek, A. Abdulkadir, S. S. Lienkamp, T. Brox, and O. Ronneberger, “3D U-Net: Learning Dense Volumetric Segmentation from Sparse Annotation,” arXiv:1606.06650 [cs], Jun. 2016, Available: https://arxiv.org/abs/1606.06650
+
+[2] “CSIRO Data Access Portal,” Csiro.au, 2025. https://data.csiro.au/collection/csiro:51392v2?redirected=true
