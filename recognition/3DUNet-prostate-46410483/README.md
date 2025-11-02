@@ -10,6 +10,12 @@ The model implemented is based on the 3D-UNet describes in [1] and has the follo
 
 ## Dataset
 
+The dataset used is a Prostate 3D data set provided by [2] it contains 211 MRI scans and ground truth labels in the NifTI file format.
+
+For the training, validation and testing of the model a 80%/10%/10% was choosen for the size of the dataset respectively. The data is randomly selected from the main dataset when creating these datasets to allow for each model to be trained on different data.
+
+Additionally, the data has been downsampled by a factor of 0.5 to reduce complexity and time for training
+
 ## Usage
 
 **Dependencies**
