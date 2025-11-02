@@ -18,7 +18,7 @@ LABEL_PATH = r"N:\code\prostate_data\data\semantic_labels_anon"
 # Hyper Parameters
 DOWNSAMPLE_FACTOR = 0.5
 LR = 0.001
-EPOCHS = 3
+EPOCHS = 15
 IN_CHANNELS = 1
 OUT_CHANNELS = 6
 CE_WEIGHT = 0.5
@@ -155,8 +155,8 @@ def train(device, model, train_loader, validation_loader, epochs=10, lr=0.001, s
             f"             Prostate: {dice_per_class[5]:.4f}\n")
 
     print(f"Training complete with 3D UNet\n")
-    print(f"Final average training loss: {avg_loss:.4f}\n")
-    print(f"Final average training loss: {avg_val_loss:.4f}\n")
+    print(f"Final average training loss: {avg_loss:.4f}")
+    print(f"Final average training loss: {avg_val_loss:.4f}")
     print(f"Final multiclass dice similartiy coefficient: {training_epoch_msdc:.4f}\n")
     loss_plot(epochs, train_losses, val_losses)
     dice_plot(training_dice_scores, validation_dice_scores)
