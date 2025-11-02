@@ -49,13 +49,21 @@ However to decrease the amount of VRAM needed the following channel sizes have b
 
     1 -> 32 -> 64 -> 128 -> 256 -> 128 -> 64 -> 32 -> 6
 
+### Convolution Block:
+
+    3D Convolution (kernel: 3) -> 3D Batch Normalisation -> Leaky ReLU -> 3D Convolution (kernel: 3) -> 3D Batch Normalisation -> Leaky ReLU
+
 ### Analysis Path (Encoder):
 
-This 3D-UNet consists of 4 resolution steps with each step consisting of two sub-steps which is a 3D convultion with a kernel size of 3 the result is then passed into 3D batch normalisation and then into a ReLu activation function. This same sub-step is then conducted again and the final result is passed through a 3D max pooling with a kernel size of 2 and a stride of 2.
+This 3D-UNet consists of 4 resolution steps with each step consisting of two sub-steps which is a 3D convultion with a kernel size of 3 the result is then passed into 3D batch normalisation and then into a leaky ReLu activation function. This same sub-step is then conducted again and the final result is passed through a 3D max pooling with a kernel size of 2 and a stride of 2.
 
 ### Synthesis Path (Decoder):
 
-In the synthesis path upsampling will be conducted by passing the input through a transpose 3D convolution with a kernel size of 2 and a stride of 2 to upsample without changing the resolution. Then the result will be passed into the previously mentioned convulition block twice.
+In the synthesis path upsampling will be conducted by passing the input through a transpose 3D convolution with a kernel size of 2 and a stride of 2 to upsample without changing the resolution. Then the result will be passed into the previously mentioned convulition block twice. This is repeated 3 times and then passed through 3D convolution with a kernel size of 1 to reduce the number of channels to number of classes in this case 6.
+
+### Bottle Neck:
+
+A bottle neck is avoided by using the transposed convolution mentioned before.
 
 
 ## Dataset
