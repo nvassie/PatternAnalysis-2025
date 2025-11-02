@@ -6,8 +6,11 @@ This project implements a 3D-UNet to segment a downsampled Prostate 3D data set 
 
 ```bash
 └── 3DUNet-prostate-46410483
-    ├── readme_images
+    ├── example_images
     │   ├── 3DUnet_architecture.png
+    │   ├── example_dice_plot.png
+    │   ├── example_loss_plot.png
+    │   ├── example_multiclass_plot.png
     │   ├── ground_truth.gif
     │   └── model.gif
     ├── .gitignore
@@ -23,7 +26,7 @@ This project implements a 3D-UNet to segment a downsampled Prostate 3D data set 
 
 The model implemented is based on the 3D-UNet describes in [1] and has the following architecture:
 
-![model architecture](readme_images/3DUnet_architecture.png)
+![model architecture](example_images/3DUnet_architecture.png)
 [1]
 
 The input into this 3D-UNet is one channel as the Prostate dataset is grayscale and the output is the number of classes in this case 6.
@@ -158,13 +161,13 @@ Below are two gifs of the same image with masks overlayed on them, the left gif 
 
 | Model | Ground Truth |
 | :---: | :----------: |
-| ![model](readme_images/model.gif) | ![ground_truth](readme_images/ground_truth.gif) |
+| ![model](example_images/model.gif) | ![ground_truth](example_images/ground_truth.gif) |
 
 The following images are examples of what is provided at the end of training a model:
 
-![loss](readme_images/example_loss_plot.png)
-![dice](readme_images/example_dice_plot.png)
-![multiclass](readme_images/example_multiclass_plot.png)
+![loss](example_images/example_loss_plot.png)
+![dice](example_images/example_dice_plot.png)
+![multiclass](example_images/example_multiclass_plot.png)
 
 ## Results
 
