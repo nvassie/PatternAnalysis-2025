@@ -180,7 +180,6 @@ def evaulate(device, model, loader):
             print(f"       Steps Completed: {count}/{len(loader)}")
 
     mask_plot(plot_image, plot_mask, plot_output, dice_per_class)
-    print(plot_image.shape, plot_output.shape)
     vol1, seg1 = prepare_volumes_any(plot_image, plot_output)   # -> (72,136,136) each
     make_multiclass_overlay_gif(vol1, seg1, out_path="my_volume1.gif", fps=8, alpha=0.2)
     vol2, seg2 = prepare_volumes_any(plot_image, plot_mask)   # -> (72,136,136) each

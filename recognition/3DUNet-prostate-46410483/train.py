@@ -324,7 +324,7 @@ def train(device, model, train_loader, validation_loader, epochs=10, lr=0.001, s
     # End of training logging
     print(f"Training complete with 3D UNet\n")
     print(f"Final average training loss: {avg_loss:.4f}")
-    print(f"Final average training loss: {avg_val_loss:.4f}")
+    print(f"Final average validation loss: {avg_val_loss:.4f}")
     print(f"Final multiclass dice similartiy coefficient: {training_epoch_msdc:.4f}\n")
 
     # Plots

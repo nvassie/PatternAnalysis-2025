@@ -1,6 +1,11 @@
 ## Description
 
-This project implements a 3D-UNet to segment a downsampled Prostate 3D data set with the goal of having a minimum dice similarity coefficient of 0.7 when testing.
+This project contains:
+- A PyTorch implementation of a 3D-UNet
+- Training, Validation and Testing loops for the 3D-UNet
+- A custom dataset for the Prostate 3D data set
+
+This project implements a 3D-UNet to segment a downsampled Prostate 3D data set [[2]](#references) with the goal of having a minimum dice similarity coefficient of 0.7 when testing.
 
 The main goal of this is to reduce required time and labour costs required in labeling MRI scans, allowing doctors and patients to recieve data and results faster.
 
@@ -103,7 +108,7 @@ To create and train a model, running the following line in the 3DUNet-prostate-4
 python train.py
 ```
 
-#### Output:
+#### Terminal Output:
 
 Below is a sample of the output that will provided while training:
 
@@ -144,9 +149,9 @@ To use a previously created model to create visualations of the preformance of t
 python predict.py
 ```
 
-#### Output:
+#### Terminal Output:
 
-Below is a sample of the output that will provided:
+Below is a sample of the terminal output that will provided:
 
 ```bash
 Starting Testing 3D UNet
@@ -166,27 +171,53 @@ Average loss while testing: 0.0744
 
 To consistantly get above 0.7 dice similarity coefficients for all classes 15 epochs is recommended by 10 epochs will give an above 0.7 dice similarity coefficients for all classes most of the time.
 
-### Example output
+### Example Output
 
 The following results is what will be provided when using train.py and predict.py, this example model was trained with 15 epochs
+
+#### Final Results
+
+Final average training loss: 0.0620
+Final average validation loss: 0.0661
+
+| Class      | Dice Similarity Coefficients |
+| ---------- | ---------------------------- |
+| Multiclass | 0.9188                       |
+| Background | 0.9984                       |
+| Body       | 0.8796                       |
+| Bladder    | 0.9577                       |
+| Rectum     | 0.8020                       |
+| Prostate   | 0.8910                       |
+
+Average loss after testing: 0.0696
+
+#### Training output
+
+The following images are examples of what is provided at the end of training a model:
+
+The following plot shows that the average losses for training and validation converge around 0.1. This also shows that the model is not overfitting to the training dataset.
+
+![loss](example_images/example_loss_plot.png)
+
+The following plot shows that dice similarity coefficients for each class increase each epoch for both the training and validation of the model, converging above 0.7 after training is complete.
+
+![dice](example_images/example_dice_plot.png)
+
+The following plot shows the multiclass dice similarity coefficients for both training and validation increase throughout the training of the model, converging just under 0.9.
+
+![multiclass](example_images/example_multiclass_plot.png)
+
+#### Predict Output
+
+The following image is an example of the outputted plot when testing has concluded:
+
+![mask_comparison](example_images/example_mask_comparison_plot.png)
 
 Below are two gifs of the same image with masks overlayed on them, the left gif uses the masks produced by the model and the right gif uses the ground truth masks provided by the dataset.
 
 | Model | Ground Truth |
 | :---: | :----------: |
-| ![model](example_images/model.gif) | ![ground_truth](example_images/ground_truth.gif) |
-
-The following images are examples of what is provided at the end of training a model:
-
-![loss](example_images/example_loss_plot.png)
-
-![dice](example_images/example_dice_plot.png)
-
-![multiclass](example_images/example_multiclass_plot.png)
-
-The following image is an example of the outputted plot when testing has concluded:
-
-![mask_comparison](example_images/example_mask_comparison_plot.png)
+| ![model](example_images/example_model.gif) | ![ground_truth](example_images/example_ground_truth.gif) |
 
 ## References
 
