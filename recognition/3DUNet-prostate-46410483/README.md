@@ -44,11 +44,13 @@ However to decrease the amount of VRAM needed the following channel sizes have b
 
     1 -> 32 -> 64 -> 128 -> 256 -> 128 -> 64 -> 32 -> 6
 
-### Analysis Path:
+### Analysis Path (Encoder):
 
 This 3D-UNet consists of 4 resolution steps with each step consisting of two sub-steps which is a 3D convultion with a kernel size of 3 the result is then passed into 3D batch normalisation and then into a ReLu activation function. This same sub-step is then conducted again and the final result is passed through a 3D max pooling with a kernel size of 2 and a stride of 2.
 
-### Synthesis Path:
+### Synthesis Path (Decoder):
+
+In the synthesis path upsampling will be conducted by passing the input through a transpose 3D convolution with a kernel size of 2 and a stride of 2 to upsample without changing the resolution. Then the result will be passed into the previously mentioned convulition block twice.
 
 
 ## Dataset
@@ -57,7 +59,7 @@ The dataset used is a Prostate 3D data set provided by [[2]](#references) it con
 
 For the training, validation and testing of the model a 80%/10%/10% was choosen for the size of the dataset respectively. The data is randomly selected from the main dataset when creating these datasets to allow for each model to be trained on different data.
 
-Additionally, the data has been downsampled by a factor of 0.5 to reduce complexity and time for training, the factor can be changed in the main loop of train.py by changing downsample_factor to allow for the original image resolution to be used.
+Additionally, the data has been downsampled by a factor of 0.5 to reduce complexity and time for training, the factor can be changed at the top of train.py by changing DOWNSAMPLE_FACTOR to allow for the original image resolution to be used.
 
 ## Usage
 
@@ -160,7 +162,13 @@ Starting Testing 3D UNet
 Average loss while testing: 0.0744 
 ```
 
-## Example Results
+## Results
+
+To consistantly get above 0.7 dice similarity coefficients for all classes 15 epochs is recommended by 10 epochs will give an above 0.7 dice similarity coefficients for all classes most of the time.
+
+### Example output
+
+The following results is what will be provided when using train.py and predict.py, this example model was trained with 15 epochs
 
 Below are two gifs of the same image with masks overlayed on them, the left gif uses the masks produced by the model and the right gif uses the ground truth masks provided by the dataset.
 
@@ -179,10 +187,6 @@ The following images are examples of what is provided at the end of training a m
 The following image is an example of the outputted plot when testing has concluded:
 
 ![mask_comparison](example_images/example_mask_comparison_plot.png)
-
-## Results
-
-To consistantly get above 0.7 dice similarity coefficients for all classes 15 epochs is recommended by 10 epochs will give an above 0.7 dice similarity coefficients for all classes most of the time.
 
 ## References
 
