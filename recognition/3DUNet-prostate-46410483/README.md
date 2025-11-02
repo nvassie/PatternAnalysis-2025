@@ -14,7 +14,7 @@ The dataset used is a Prostate 3D data set provided by [2] it contains 211 MRI s
 
 For the training, validation and testing of the model a 80%/10%/10% was choosen for the size of the dataset respectively. The data is randomly selected from the main dataset when creating these datasets to allow for each model to be trained on different data.
 
-Additionally, the data has been downsampled by a factor of 0.5 to reduce complexity and time for training
+Additionally, the data has been downsampled by a factor of 0.5 to reduce complexity and time for training, the factor can be changed in the main loop of train.py by changing downsample_factor to allow for the original image resolution to be used.
 
 ## Usage
 
