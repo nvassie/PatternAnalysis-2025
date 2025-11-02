@@ -2,6 +2,10 @@
 
 This project implements a 3D-UNet to segment a downsampled Prostate 3D data set with the goal of having a minimum dice similarity coefficient of 0.7 when testing.
 
+The main goal of this is to reduce required time and labour costs required in labeling MRI scans, allowing doctors and patients to recieve data and results faster.
+
+Additionally, if this model is trained well it could be able to perform a more consistent standard of segementation and labeling as it will not be effected by human-error.
+
 ## Project Folder Structure
 
 ```bash
@@ -24,10 +28,11 @@ This project implements a 3D-UNet to segment a downsampled Prostate 3D data set 
 
 ## Model Architecture
 
-The model implemented is based on the 3D-UNet describes in [1] and has the following architecture:
+The model implemented is based on the 3D-UNet describes in [[1]](#references) and has the following architecture:
 
 ![model architecture](example_images/3DUnet_architecture.png)
-[1]
+
+Figure 1: 3D-UNet architecture (Figure 2 from [[1]](#references))
 
 The input into this 3D-UNet is one channel as the Prostate dataset is grayscale and the output is the number of classes in this case 6.
 
@@ -48,7 +53,7 @@ This 3D-UNet consists of 4 resolution steps with each step consisting of two sub
 
 ## Dataset
 
-The dataset used is a Prostate 3D data set provided by [2] it contains 211 MRI scans and ground truth labels in the NifTI file format.
+The dataset used is a Prostate 3D data set provided by [[2]](#references) it contains 211 MRI scans and ground truth labels in the NifTI file format.
 
 For the training, validation and testing of the model a 80%/10%/10% was choosen for the size of the dataset respectively. The data is randomly selected from the main dataset when creating these datasets to allow for each model to be trained on different data.
 
@@ -166,8 +171,14 @@ Below are two gifs of the same image with masks overlayed on them, the left gif 
 The following images are examples of what is provided at the end of training a model:
 
 ![loss](example_images/example_loss_plot.png)
+
 ![dice](example_images/example_dice_plot.png)
+
 ![multiclass](example_images/example_multiclass_plot.png)
+
+The following image is an example of the outputted plot when testing has concluded:
+
+![mask_comparison](example_images/example_mask_comparison_plot.png)
 
 ## Results
 
