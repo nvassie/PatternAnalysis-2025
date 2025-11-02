@@ -1,3 +1,4 @@
+from typing import Tuple
 import torch
 import os
 import imageio
@@ -7,72 +8,35 @@ from modules import ThreeDUNet
 from train import DiceCELoss, mask_plot
 import numpy as np
 
-def prepare_volumes_any(image_tensor: torch.Tensor,
-                        mask_tensor: torch.Tensor):
+def prepare_volumes_any(
+    image_tensor: torch.Tensor,
+    mask_tensor: torch.Tensor,
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """
-    Inputs can be:
-      image_tensor: 
-        - (B, C, H, W, D)
-        - (C, H, W, D)
-        - (H, W, D)
-      mask_tensor:
-        - label map (H, W, D)
-        - (B, 1, H, W, D)
-        - one-hot / logits (B, Cclasses, H, W, D) or (Cclasses, H, W, D)
-
     Returns:
-      vol_zhw: (D, H, W) float32  (intensities)
-      seg_zhw: (D, H, W) int64    (class ids 0..K-1)
+    vol_zhw: (D, H, W) float32  (intensities)
+    seg_zhw: (D, H, W) int64    (class ids 0..K-1)
     """
-
-    # ---- 1. IMAGE SHAPE NORMALIZATION ----
     img = image_tensor
-
-    # remove batch dim if present
     if img.dim() == 5:
-        # assume (B, C, H, W, D)
-        img = img[0]  # take first in batch -> (C, H, W, D)
-
+        img = img[0]
     if img.dim() == 4:
         img = img[0]
 
-    # by now we expect img to be (H, W, D)
-    assert img.dim() == 3, f"Image after squeeze is {img.shape}, expected 3D (H,W,D)"
-
-    # ---- 2. MASK SHAPE NORMALIZATION ----
     seg = mask_tensor
-
-    # remove batch if present
     if seg.dim() == 5:
-        # assume (B, C_or_1, H, W, D)
-        seg = seg[0]  # (C_or_1, H, W, D)
-
+        seg = seg[0]
     if seg.dim() == 4:
-        # could be:
-        #   (1, H, W, D)               -> single-channel labels
-        #   (Cclasses, H, W, D)        -> per-class scores / one-hot
         if seg.shape[0] == 1:
-            seg = seg[0]  # (H, W, D)
+            seg = seg[0]
         else:
             print(4)
-            # assume channel-first classes
-            # convert to argmax class map
-            seg = torch.argmax(seg, dim=0)  # (H, W, D)
-
+            seg = torch.argmax(seg, dim=0)
     if seg.dim() == 3 and seg.shape[0] != img.shape[0] and seg.shape[0] == img.shape[-1]:
-        # edge case: seg is (D,H,W) but img is (H,W,D); rotate seg to (H,W,D)
-        # but let's handle that after we align axes below, so we won't do anything here
         pass
 
-    # now seg should be (H, W, D) as class indices per voxel
-    assert seg.dim() == 3, f"Mask after squeeze/argmax is {seg.shape}, expected 3D (H,W,D)"
-
-    # ---- 3. PUT DEPTH FIRST -> (D, H, W) ----
-    # Right now img, seg are (H, W, D)
-    # We convert both to (D, H, W)
     vol_zhw = img.permute(2, 0, 1).contiguous().float()
     seg_zhw = seg.permute(2, 0, 1).contiguous().long()
-
     return vol_zhw, seg_zhw
 
 
@@ -180,10 +144,12 @@ def evaulate(device, model, loader):
             print(f"       Steps Completed: {count}/{len(loader)}")
 
     mask_plot(plot_image, plot_mask, plot_output, dice_per_class)
-    vol1, seg1 = prepare_volumes_any(plot_image, plot_output)   # -> (72,136,136) each
-    make_multiclass_overlay_gif(vol1, seg1, out_path="my_volume1.gif", fps=8, alpha=0.2)
-    vol2, seg2 = prepare_volumes_any(plot_image, plot_mask)   # -> (72,136,136) each
-    make_multiclass_overlay_gif(vol2, seg2, out_path="my_volume2.gif", fps=8, alpha=0.2)
+
+    image_vol1, output_vol = prepare_volumes_any(plot_image, plot_output)
+    make_multiclass_overlay_gif(image_vol1, output_vol, out_path="model.gif", fps=8, alpha=0.2)
+
+    image_vol2, mask_vol = prepare_volumes_any(plot_image, plot_mask)
+    make_multiclass_overlay_gif(image_vol2, mask_vol, out_path="ground_truth.gif", fps=8, alpha=0.2)
 
     average_loss = total_loss / len(loader)
     print(f"\nAverage loss while evaulating: {average_loss:.4f}")
