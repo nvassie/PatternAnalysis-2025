@@ -4,7 +4,7 @@ import imageio
 from torch.utils.data import DataLoader, random_split
 from dataset import Prostate3DDataset
 from modules import ThreeDUNet
-from train import DiceCELoss, epoch_plot
+from train import DiceCELoss, mask_plot
 import numpy as np
 
 def prepare_volumes_any(image_tensor: torch.Tensor,
@@ -179,7 +179,7 @@ def evaulate(device, model, loader):
             count += 1
             print(f"       Steps Completed: {count}/{len(loader)}")
 
-    epoch_plot(plot_image, plot_mask, plot_output, dice_per_class)
+    mask_plot(plot_image, plot_mask, plot_output, dice_per_class)
     print(plot_image.shape, plot_output.shape)
     vol1, seg1 = prepare_volumes_any(plot_image, plot_output)   # -> (72,136,136) each
     make_multiclass_overlay_gif(vol1, seg1, out_path="my_volume1.gif", fps=8, alpha=0.2)

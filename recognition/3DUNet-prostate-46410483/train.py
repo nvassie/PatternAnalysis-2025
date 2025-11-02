@@ -28,7 +28,9 @@ DICE_WEIGHT = 0.5
 SMOOTHING = 1e-6
 CLASS_NUMBER = 6
 
-def epoch_plot(images, masks, outputs, dice_values):
+# ------------------------------------- Plotting Functions ------------------------------------- #
+
+def mask_plot(images, masks, outputs, dice_values):
         with torch.no_grad():
             image = images[0]
             mask = masks[0]
@@ -169,6 +171,10 @@ def multiclass_dice_plot(epoch_num, training_mcds, validation_mcdc):
     plt.legend()
     plt.show()
 
+# ---------------------------------------------------------------------------------------------- #
+
+# ---------------------------------------- Loss Function --------------------------------------- #
+
 class DiceCELoss(nn.Module):
     """
     A loss function that combines different weights of dice loss and cross entropy loss
@@ -181,11 +187,12 @@ class DiceCELoss(nn.Module):
         self.ce = nn.CrossEntropyLoss()
 
     def forward(self, prediction, target):
-        """
-        """
+        # Calculates cross entropy loss
         ce_loss = self.ce(prediction, target) * self.ce_weight
+
         probability = torch.softmax(prediction, dim=1)
 
+        # Calculates dice loss
         one_hot = torch.nn.functional.one_hot(target, num_classes=6)
         one_hot = one_hot.permute(0,4,1,2,3)
         dice_loss, dice_per_class = calc_dice_loss(probability, one_hot, self.smoothing)
@@ -194,12 +201,17 @@ class DiceCELoss(nn.Module):
         return (ce_loss + dice_loss), dice_per_class.detach().cpu().numpy()
 
 def calc_dice_loss(probability, one_hot, smoothing):
+    """
+    Calculates the multiclass dice loss and the DSC for each class
+    """
     dims = (0, 2, 3, 4)
     intersection = torch.sum(probability * one_hot, dims)
     denominator = torch.sum(probability + one_hot, dims)
     dice_per_class = (2 * intersection + smoothing) / (denominator + smoothing)
     dice_mean = dice_per_class.mean()
     return (1 - dice_mean), dice_per_class
+
+# ---------------------------------------------------------------------------------------------- #
 
 def generate_datasets(image_path, label_path, downsample_factor):
     """
@@ -222,10 +234,15 @@ def generate_datasets(image_path, label_path, downsample_factor):
     return training_dataset, validation_dataset, test_dataset
 
 def train(device, model, train_loader, validation_loader, epochs=10, lr=0.001, save=False, plot_epoch_results=False):
+    """
+    Trains the provided model
+    """
+    # Initialisation
     model.to(device)
     criterion = DiceCELoss(SMOOTHING, CE_WEIGHT, DICE_WEIGHT)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     
+    # Initialise metrics
     train_losses = []
     val_losses = []
     training_dice_scores = []
@@ -237,12 +254,13 @@ def train(device, model, train_loader, validation_loader, epochs=10, lr=0.001, s
 
     for epoch in range(epochs):
         model.train()
+
         training_loss = 0
         validation_loss = 0
         count = 0
+
         for _, (images, masks) in enumerate(train_loader):
             images, masks = images.to(device).float(), masks.to(device).long()
-
 
             if masks.dim() == 5 and masks.size(0) == 1:
                 masks = masks.squeeze(0)
@@ -266,29 +284,33 @@ def train(device, model, train_loader, validation_loader, epochs=10, lr=0.001, s
         validation_loss += validation_epoch_loss
         model.train()
 
+        # If enabled will plot after every epoch
         if plot_epoch_results:
             model.eval()
-            epoch_plot(images, masks, outputs, dice_per_class)
+            mask_plot(images, masks, outputs, dice_per_class)
             model.train()
 
-
+        # Calculate losses
         avg_loss = training_loss / len(train_loader)
         avg_val_loss = validation_loss / len(validation_loader)
         train_losses.append(avg_loss)
         val_losses.append(avg_val_loss)
 
+        # Calculate DSC for each class for training and validation
         epoch_training_dice_scores = [dice_per_class[0], dice_per_class[1], dice_per_class[2], dice_per_class[3], dice_per_class[4], dice_per_class[5]]
         training_dice_scores.append(epoch_training_dice_scores)
 
         epoch_validation_dice_scores = [validation_dice_per_class[0], validation_dice_per_class[1], validation_dice_per_class[2], validation_dice_per_class[3], validation_dice_per_class[4], validation_dice_per_class[5]]
         validation_dice_scores.append(epoch_validation_dice_scores)
 
+        # Calculate the multiclass DSC for training and validation
         training_epoch_msdc = (dice_per_class[0] + dice_per_class[1] + dice_per_class[2] + dice_per_class[3] + dice_per_class[4] + dice_per_class[5]) / CLASS_NUMBER
         multiclass_training_dice_scores.append(training_epoch_msdc)
 
         validation_epoch_msdc = (validation_dice_per_class[0] + validation_dice_per_class[1] + validation_dice_per_class[2] + validation_dice_per_class[3] + validation_dice_per_class[4] + validation_dice_per_class[5]) / CLASS_NUMBER
         multiclass_validation_dice_scores.append(validation_epoch_msdc)
 
+        # End of epoch logging
         print(f"\n    📍 Epoch {epoch+1}/{epochs} Complete: Avg Training Loss = {avg_loss:.4f}, Avg Validation Loss = {avg_val_loss:.4f}")
         print(f"          Dice Similarity Coefficients:")
         print(f"             Multiclass: {training_epoch_msdc:.4f}\n"
@@ -298,15 +320,19 @@ def train(device, model, train_loader, validation_loader, epochs=10, lr=0.001, s
             f"             Bladder: {dice_per_class[3]:.4f}\n"
             f"             Rectum: {dice_per_class[4]:.4f}\n"
             f"             Prostate: {dice_per_class[5]:.4f}\n")
-
+        
+    # End of training logging
     print(f"Training complete with 3D UNet\n")
     print(f"Final average training loss: {avg_loss:.4f}")
     print(f"Final average training loss: {avg_val_loss:.4f}")
     print(f"Final multiclass dice similartiy coefficient: {training_epoch_msdc:.4f}\n")
+
+    # Plots
     loss_plot(epochs, train_losses, val_losses)
     dice_plot(training_dice_scores, validation_dice_scores)
     multiclass_dice_plot(epochs, multiclass_training_dice_scores, multiclass_validation_dice_scores)
     
+    #Saves the current model to ./models
     if save:
         current_dir = os.path.dirname(os.path.abspath(__file__))
         save_dir = os.path.join(current_dir, "models")
@@ -316,8 +342,13 @@ def train(device, model, train_loader, validation_loader, epochs=10, lr=0.001, s
         print(f"Saved model to {model_path}\n")
 
 def validate(device, model, validation_loader):
+    """
+    Validates the provided model
+    """
+    # Initialisation
     model.eval()
     criterion = DiceCELoss(SMOOTHING, CE_WEIGHT, DICE_WEIGHT)
+
     with torch.no_grad():
         total_loss = 0
 
@@ -337,12 +368,20 @@ def validate(device, model, validation_loader):
 
 
 def test(device, model, test_loader, plot=False):
+    """
+    Tests the provided model
+    """
+    # Initialisation
     model.eval()
     criterion = DiceCELoss(SMOOTHING, CE_WEIGHT, DICE_WEIGHT)
+
     print(f"Starting Testing 3D UNet\n")
+
     with torch.no_grad():
         total_loss = 0
         count = 0
+
+        # Images that wil be displayed after testing
         plot_image = None
         plot_mask = None
         plot_output = None
@@ -364,12 +403,14 @@ def test(device, model, test_loader, plot=False):
                 plot_mask = masks
                 plot_output = outputs
             count += 1
+
             print(f"       Steps Completed: {count}/{len(test_loader)}")
-            
+    
     if plot and plot_image != None and plot_mask != None and plot_output != None:
-        epoch_plot(plot_image, plot_mask, plot_output, dice_per_class)
+        mask_plot(plot_image, plot_mask, plot_output, dice_per_class)
 
     average_loss = total_loss / len(test_loader)
+
     print(f"\nAverage loss while testing: {average_loss:.4f}")
 
 if __name__ == "__main__":
@@ -377,12 +418,16 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Using device: {device}\n')
 
+    # Generate datasets
     training_dataset, validation_dataset, test_dataset = generate_datasets(IMAGE_PATH, LABEL_PATH, DOWNSAMPLE_FACTOR)
 
+    # Create data loaders
     train_loader = DataLoader(training_dataset, batch_size=1, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
     validation_loader = DataLoader(validation_dataset, batch_size=1, shuffle=False)
 
+    # Create model and start training and testing
     model = ThreeDUNet(in_channels=IN_CHANNELS, out_channels=OUT_CHANNELS)
+
     train(device, model, train_loader, validation_loader, epochs=EPOCHS, lr=LR, save=True, plot_epoch_results=False)
     test(device, model, test_loader, plot=True)
