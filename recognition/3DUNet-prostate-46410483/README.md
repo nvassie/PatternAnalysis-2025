@@ -186,6 +186,7 @@ The following results is what will be provided when using train.py and predict.p
 #### Final Results
 
 Final average training loss: 0.0620
+
 Final average validation loss: 0.0661
 
 | Class      | Dice Similarity Coefficients |
