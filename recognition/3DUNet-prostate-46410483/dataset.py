@@ -5,7 +5,7 @@ import os
 from torch.utils.data import Dataset
 import torch
 
-def combine_labels_images(images_path: str, labels_path: str, indices: List[int]) -> List[Tuple[str, str]]:
+def combine_labels_images(images_path: str, labels_path: str) -> List[Tuple[str, str]]:
     """
     Creates a list of tuples of paths to the link images and labels
     """
@@ -16,7 +16,7 @@ def combine_labels_images(images_path: str, labels_path: str, indices: List[int]
     combined = []
 
     # Creates path for each image and label and combines them in a tuple
-    for i in indices:
+    for i in range(len(images)):
         image = os.path.join(images_path, images[i])
         label = os.path.join(labels_path, labels[i])
         pair = (image, label)
@@ -56,9 +56,9 @@ def pad_image(image):
 class Prostate3DDataset(Dataset):
     """Dataset for color images and binary masks."""
 
-    def __init__(self, image_path=r"N:\code\prostate_data\data\semantic_MRs_anon", label_path=r"N:\code\prostate_data\data\semantic_labels_anon", indices=[]):
-        self.dataset = combine_labels_images(image_path, label_path, indices)
-        self.downsample = 0.5
+    def __init__(self, image_path=r"N:\code\prostate_data\data\semantic_MRs_anon", label_path=r"N:\code\prostate_data\data\semantic_labels_anon", downsample_factor=0.5):
+        self.dataset = combine_labels_images(image_path, label_path)
+        self.downsample = downsample_factor
 
     def __len__(self):
         return len(self.dataset)
@@ -79,8 +79,9 @@ class Prostate3DDataset(Dataset):
         mask = torch.from_numpy(mask)[None, None].float()
 
         # Downsample image and mask
-        image = torch.nn.functional.interpolate(image, scale_factor=self.downsample, mode='trilinear', align_corners=False)
-        mask = torch.nn.functional.interpolate(mask, scale_factor=self.downsample, mode='trilinear')
+        if self.downsample < 1 and self.downsample > 0:
+            image = torch.nn.functional.interpolate(image, scale_factor=self.downsample, mode='trilinear', align_corners=False)
+            mask = torch.nn.functional.interpolate(mask, scale_factor=self.downsample, mode='trilinear')
 
         # Pad downsampled image and mask to make sure they are compatible with model
         image = pad_image(image)

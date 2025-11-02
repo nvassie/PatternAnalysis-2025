@@ -3,7 +3,7 @@ import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from modules import ThreeDUNet
 from datetime import date
 from plotting import epoch_plot, loss_plot
@@ -40,7 +40,7 @@ def calc_dice_loss(probability, one_hot, smoothing):
     dice_mean = dice_per_class.mean()
     return (1 - dice_mean), dice_per_class
 
-def generate_indices_for_datasets(image_path):
+def generate_datasets(image_path, label_path, downsample_factor):
     """
     generates random three lists of indices for the training (80%), testing (10%) and 
     validation (10%) datasets, based on provided dataset size.
@@ -49,18 +49,16 @@ def generate_indices_for_datasets(image_path):
     """
     images = os.listdir(image_path)
     num_of_images = len(images)
-    list_of_indices = list(range(num_of_images))
 
-    random.shuffle(list_of_indices)
+    full_dataset = Prostate3DDataset(image_path, label_path, downsample_factor)
 
     train_num = int(0.8 * num_of_images)
     val_num = int(0.1 * num_of_images)
+    test_num = num_of_images - (train_num + val_num)
 
-    train_indices = list_of_indices[:train_num]
-    val_indices = list_of_indices[train_num:train_num + val_num]
-    test_indices = list_of_indices[train_num + val_num:]
+    training_dataset, validation_dataset, test_dataset = random_split(full_dataset, [train_num, val_num, test_num])
 
-    return train_indices, test_indices, val_indices
+    return training_dataset, validation_dataset, test_dataset
 
 def train(device, model, train_loader, validation_loader, epochs=3, lr=0.001, save=False, plot_epoch_results=False):
     model.to(device)
@@ -191,16 +189,13 @@ def test(device, model, test_loader, plot=False):
 if __name__ == "__main__":
     image_path = r"N:\code\prostate_data\data\semantic_MRs_anon"
     label_path = r"N:\code\prostate_data\data\semantic_labels_anon"
+    downsample_factor = 0.5
 
     # Check if CUDA is available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Using device: {device}\n')
 
-    train_indices, test_indices, val_indices = generate_indices_for_datasets(image_path)
-
-    training_dataset = Prostate3DDataset(image_path=image_path, label_path=label_path, indices=train_indices)
-    test_dataset = Prostate3DDataset(image_path=image_path, label_path=label_path, indices=test_indices)
-    validation_dataset = Prostate3DDataset(image_path=image_path, label_path=label_path, indices=val_indices)
+    training_dataset, validation_dataset, test_dataset = generate_datasets(image_path, label_path, downsample_factor)
 
     train_loader = DataLoader(training_dataset, batch_size=1, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
