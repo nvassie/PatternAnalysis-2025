@@ -4,7 +4,7 @@ import imageio
 from torch.utils.data import DataLoader, random_split
 from dataset import Prostate3DDataset
 from modules import ThreeDUNet
-from train import DiceCELoss
+from train import DiceCELoss, epoch_plot
 import numpy as np
 
 def prepare_volumes_any(image_tensor: torch.Tensor,
